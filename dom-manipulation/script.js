@@ -43,25 +43,29 @@ function createAddQuoteForm() {
   addButton.id = 'addQuote';
   addButton.textContent = 'Add Quote';
 
-  const exportButton = document.createElement('button');
-  exportButton.id = 'exportQuotes';
-  exportButton.textContent = 'Export Quotes';
+  // const exportButton = document.createElement('button');
+  // exportButton.id = 'exportQuotes';
+  // exportButton.textContent = 'Export Quotes';
 
-  const importInput = document.createElement('input');
-  importInput.type = 'file';
-  importInput.id = 'importFile';
-  importInput.accept = '.json';
+  // const importInput = document.createElement('input');
+  // importInput.type = 'file';
+  // importInput.id = 'importFile';
+  // importInput.accept = '.json';
 
   // Append all elements to the form container
   formContainer.appendChild(heading);
   formContainer.appendChild(quoteInput);
   formContainer.appendChild(categoryInput);
   formContainer.appendChild(addButton);
-  formContainer.appendChild(exportButton);
-  formContainer.appendChild(importInput);
+  // formContainer.appendChild(exportButton);
+  // formContainer.appendChild(importInput);
 
   // Add the form after the newQuote button
-  document.getElementById('newQuote').after(formContainer);
+  document.getElementById('importFile').after(formContainer);
+
+  //Define variables for the export btn and import input
+  const exportButton = document.getElementById('exportQuotes');
+  const importInput = document.getElementById('importFile');
 
   // Add event listener to the new button
   addButton.addEventListener('click', addQuote);
