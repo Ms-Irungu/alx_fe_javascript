@@ -74,51 +74,56 @@ async function postQuotesToServer(quotes) {
   }
 }
 
-// Sync local data with server data
-async function syncLocalDataWithServer() {
+// Main sync function that handles both fetching and posting
+async function syncQuotes() {
   try {
-    showNotification('Syncing with server...', 'info');
-    const serverQuotes = await fetchQuotesFromServer();
+    showNotification('Starting quote synchronization...', 'info');
     
-    if (serverQuotes) {
-      const localQuotes = JSON.parse(localStorage.getItem("quotes")) || [];
-      
-      // Merge server and local quotes, removing duplicates
-      const mergedQuotes = [...localQuotes];
-      
-      serverQuotes.forEach(serverQuote => {
-        const exists = localQuotes.some(localQuote => 
-          localQuote.text === serverQuote.text && 
-          localQuote.category === serverQuote.category
-        );
-        
-        if (!exists) {
-          mergedQuotes.push(serverQuote);
-        }
-      });
-      
-      // Update local storage and memory with merged quotes
-      localStorage.setItem("quotes", JSON.stringify(mergedQuotes));
-      quotes = mergedQuotes;
-      
-      // Update UI
-      populateCategories();
-      showRandomQuote();
-      
-      showNotification('Sync completed successfully', 'info');
-    }
-  } catch (error) {
-    console.error('Sync error:', error);
-    showNotification('Error during sync process', 'error');
-  }
-}
+    // First, get quotes from server
+    const serverQuotes = await fetchQuotesFromServer();
+    if (!serverQuotes) return;
 
-function startPeriodicSync() {
-  // Initial sync
-  syncLocalDataWithServer();
-  
-  // Set up periodic sync every 30 seconds
-  setInterval(syncLocalDataWithServer, 30000);
+    // Get local quotes
+    const localQuotes = [...quotes];
+    
+    // Find new local quotes that need to be pushed to server
+    const newLocalQuotes = localQuotes.filter(localQuote => 
+      !serverQuotes.some(serverQuote => 
+        serverQuote.text === localQuote.text && 
+        serverQuote.category === localQuote.category
+      )
+    );
+
+    // If we have new local quotes, push them to server
+    if (newLocalQuotes.length > 0) {
+      await postQuotesToServer(newLocalQuotes);
+    }
+
+    // Merge server quotes with local quotes, removing duplicates
+    const mergedQuotes = [...localQuotes];
+    serverQuotes.forEach(serverQuote => {
+      const exists = localQuotes.some(localQuote => 
+        localQuote.text === serverQuote.text && 
+        localQuote.category === serverQuote.category
+      );
+      if (!exists) {
+        mergedQuotes.push(serverQuote);
+      }
+    });
+
+    // Update local storage and memory
+    quotes = mergedQuotes;
+    saveQuotes();
+    
+    // Update UI
+    populateCategories();
+    showRandomQuote();
+    
+    showNotification('Synchronization completed successfully', 'info');
+  } catch (error) {
+    console.error('Synchronization error:', error);
+    showNotification('Error during synchronization', 'error');
+  }
 }
 
 // Show notification to user
@@ -242,7 +247,7 @@ async function addQuote() {
     
     // Sync with server
     try {
-      await postQuotesToServer([{ text, category }]);
+      await syncQuotes();
       showNotification("Quote added and synced with server");
     } catch (error) {
       showNotification("Quote added locally but failed to sync with server", "error");
@@ -285,7 +290,7 @@ async function importFromJsonFile(event) {
         
         // Sync with server
         try {
-          await postQuotesToServer(importedQuotes);
+          await syncQuotes();
           showNotification("Quotes imported and synced with server");
         } catch (error) {
           showNotification("Quotes imported locally but failed to sync with server", "error");
@@ -306,8 +311,17 @@ async function importFromJsonFile(event) {
 
 // Manual refresh button handler
 async function handleManualRefresh() {
-  showNotification("Syncing with server...");
-  await syncLocalDataWithServer();
+  showNotification("Starting manual sync...");
+  await syncQuotes();
+}
+
+// Start periodic sync
+function startPeriodicSync() {
+  // Initial sync
+  syncQuotes();
+  
+  // Set up periodic sync every 30 seconds
+  setInterval(syncQuotes, 30000);
 }
 
 // Initialize everything when the page loads

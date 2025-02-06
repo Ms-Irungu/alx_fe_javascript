@@ -144,17 +144,18 @@ function postQuotesToServer(quotes) {
       }
     }
   }, null, null, [[0, 12]]);
-} // Sync local data with server data
+} // Main sync function that handles both fetching and posting
 
 
-function syncLocalDataWithServer() {
-  var serverQuotes, localQuotes, mergedQuotes;
-  return regeneratorRuntime.async(function syncLocalDataWithServer$(_context3) {
+function syncQuotes() {
+  var serverQuotes, localQuotes, newLocalQuotes, mergedQuotes;
+  return regeneratorRuntime.async(function syncQuotes$(_context3) {
     while (1) {
       switch (_context3.prev = _context3.next) {
         case 0:
           _context3.prev = 0;
-          showNotification('Syncing with server...', 'info');
+          showNotification('Starting quote synchronization...', 'info'); // First, get quotes from server
+
           _context3.next = 4;
           return regeneratorRuntime.awrap(fetchQuotesFromServer());
 
@@ -162,49 +163,64 @@ function syncLocalDataWithServer() {
           serverQuotes = _context3.sent;
 
           if (serverQuotes) {
-            localQuotes = JSON.parse(localStorage.getItem("quotes")) || []; // Merge server and local quotes, removing duplicates
+            _context3.next = 7;
+            break;
+          }
 
-            mergedQuotes = _toConsumableArray(localQuotes);
-            serverQuotes.forEach(function (serverQuote) {
-              var exists = localQuotes.some(function (localQuote) {
-                return localQuote.text === serverQuote.text && localQuote.category === serverQuote.category;
-              });
+          return _context3.abrupt("return");
 
-              if (!exists) {
-                mergedQuotes.push(serverQuote);
-              }
-            }); // Update local storage and memory with merged quotes
+        case 7:
+          // Get local quotes
+          localQuotes = _toConsumableArray(quotes); // Find new local quotes that need to be pushed to server
 
-            localStorage.setItem("quotes", JSON.stringify(mergedQuotes));
-            quotes = mergedQuotes; // Update UI
+          newLocalQuotes = localQuotes.filter(function (localQuote) {
+            return !serverQuotes.some(function (serverQuote) {
+              return serverQuote.text === localQuote.text && serverQuote.category === localQuote.category;
+            });
+          }); // If we have new local quotes, push them to server
 
-            populateCategories();
-            showRandomQuote();
-            showNotification('Sync completed successfully', 'info');
+          if (!(newLocalQuotes.length > 0)) {
+            _context3.next = 12;
+            break;
           }
 
           _context3.next = 12;
-          break;
-
-        case 8:
-          _context3.prev = 8;
-          _context3.t0 = _context3["catch"](0);
-          console.error('Sync error:', _context3.t0);
-          showNotification('Error during sync process', 'error');
+          return regeneratorRuntime.awrap(postQuotesToServer(newLocalQuotes));
 
         case 12:
+          // Merge server quotes with local quotes, removing duplicates
+          mergedQuotes = _toConsumableArray(localQuotes);
+          serverQuotes.forEach(function (serverQuote) {
+            var exists = localQuotes.some(function (localQuote) {
+              return localQuote.text === serverQuote.text && localQuote.category === serverQuote.category;
+            });
+
+            if (!exists) {
+              mergedQuotes.push(serverQuote);
+            }
+          }); // Update local storage and memory
+
+          quotes = mergedQuotes;
+          saveQuotes(); // Update UI
+
+          populateCategories();
+          showRandomQuote();
+          showNotification('Synchronization completed successfully', 'info');
+          _context3.next = 25;
+          break;
+
+        case 21:
+          _context3.prev = 21;
+          _context3.t0 = _context3["catch"](0);
+          console.error('Synchronization error:', _context3.t0);
+          showNotification('Error during synchronization', 'error');
+
+        case 25:
         case "end":
           return _context3.stop();
       }
     }
-  }, null, null, [[0, 8]]);
-}
-
-function startPeriodicSync() {
-  // Initial sync
-  syncLocalDataWithServer(); // Set up periodic sync every 30 seconds
-
-  setInterval(syncLocalDataWithServer, 30000);
+  }, null, null, [[0, 21]]);
 } // Show notification to user
 
 
@@ -323,10 +339,7 @@ function addQuote() {
 
           _context4.prev = 7;
           _context4.next = 10;
-          return regeneratorRuntime.awrap(postQuotesToServer([{
-            text: text,
-            category: category
-          }]));
+          return regeneratorRuntime.awrap(syncQuotes());
 
         case 10:
           showNotification("Quote added and synced with server");
@@ -402,7 +415,7 @@ function importFromJsonFile(event) {
 
                     _context5.prev = 5;
                     _context5.next = 8;
-                    return regeneratorRuntime.awrap(postQuotesToServer(importedQuotes));
+                    return regeneratorRuntime.awrap(syncQuotes());
 
                   case 8:
                     showNotification("Quotes imported and synced with server");
@@ -456,9 +469,9 @@ function handleManualRefresh() {
     while (1) {
       switch (_context7.prev = _context7.next) {
         case 0:
-          showNotification("Syncing with server...");
+          showNotification("Starting manual sync...");
           _context7.next = 3;
-          return regeneratorRuntime.awrap(syncLocalDataWithServer());
+          return regeneratorRuntime.awrap(syncQuotes());
 
         case 3:
         case "end":
@@ -466,6 +479,14 @@ function handleManualRefresh() {
       }
     }
   });
+} // Start periodic sync
+
+
+function startPeriodicSync() {
+  // Initial sync
+  syncQuotes(); // Set up periodic sync every 30 seconds
+
+  setInterval(syncQuotes, 30000);
 } // Initialize everything when the page loads
 
 
