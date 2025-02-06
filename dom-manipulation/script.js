@@ -24,53 +24,95 @@ function saveQuotes() {
   localStorage.setItem("quotes", JSON.stringify(quotes));
 }
 
-// Simulate fetching quotes from the server
+// Fetch quotes from JSONPlaceholder
 async function fetchQuotesFromServer() {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // Simulate server response using localStorage as a mock server
-      const serverQuotes = JSON.parse(localStorage.getItem("serverQuotes")) || quotes;
-      resolve(serverQuotes);
-    }, 1000); // Simulate network delay
-  });
+  try {
+    const response = await fetch('https://jsonplaceholder.typicode.com/posts');
+    if (!response.ok) throw new Error('Network response was not ok');
+    
+    const posts = await response.json();
+    // Transform posts into quotes format
+    const serverQuotes = posts.slice(0, 5).map(post => ({
+      text: post.body.split('\n')[0], // Take first line of post body as quote
+      category: post.title.split(' ')[0] // Take first word of title as category
+    }));
+    
+    return serverQuotes;
+  } catch (error) {
+    console.error('Error fetching quotes:', error);
+    showNotification('Error fetching quotes from server', 'error');
+    return null;
+  }
 }
 
-// Simulate posting quotes to the server
+// Post quotes to JSONPlaceholder
 async function postQuotesToServer(quotes) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // Simulate saving quotes to the server
-      localStorage.setItem("serverQuotes", JSON.stringify(quotes));
-      resolve();
-    }, 1000); // Simulate network delay
-  });
+  try {
+    const promises = quotes.map(quote => 
+      fetch('https://jsonplaceholder.typicode.com/posts', {
+        method: 'POST',
+        body: JSON.stringify({
+          title: quote.category,
+          body: quote.text,
+          userId: 1
+        }),
+        headers: {
+          'Content-type': 'application/json; charset=UTF-8',
+        },
+      })
+    );
+
+    const responses = await Promise.all(promises);
+    const results = await Promise.all(responses.map(r => r.json()));
+    
+    showNotification('Quotes successfully synced with server', 'info');
+    return results;
+  } catch (error) {
+    console.error('Error posting quotes:', error);
+    showNotification('Error syncing quotes with server', 'error');
+    return null;
+  }
 }
 
 // Sync local data with server data
 async function syncLocalDataWithServer() {
   try {
+    showNotification('Syncing with server...', 'info');
     const serverQuotes = await fetchQuotesFromServer();
-    const localQuotes = JSON.parse(localStorage.getItem("quotes")) || [];
-
-    // Check if server data is different from local data
-    if (JSON.stringify(localQuotes) !== JSON.stringify(serverQuotes)) {
-      // Server data takes precedence in case of discrepancies
-      localStorage.setItem("quotes", JSON.stringify(serverQuotes));
-      quotes = serverQuotes; // Update the in-memory quotes array
-
-      // Notify the user that data has been updated
-      showNotification("Data has been synchronized with the server");
-
-      // Refresh the UI
+    
+    if (serverQuotes) {
+      const localQuotes = JSON.parse(localStorage.getItem("quotes")) || [];
+      
+      // Merge server and local quotes, removing duplicates
+      const mergedQuotes = [...localQuotes];
+      
+      serverQuotes.forEach(serverQuote => {
+        const exists = localQuotes.some(localQuote => 
+          localQuote.text === serverQuote.text && 
+          localQuote.category === serverQuote.category
+        );
+        
+        if (!exists) {
+          mergedQuotes.push(serverQuote);
+        }
+      });
+      
+      // Update local storage and memory with merged quotes
+      localStorage.setItem("quotes", JSON.stringify(mergedQuotes));
+      quotes = mergedQuotes;
+      
+      // Update UI
       populateCategories();
       showRandomQuote();
+      
+      showNotification('Sync completed successfully', 'info');
     }
   } catch (error) {
-    showNotification("Error syncing with server", "error");
+    console.error('Sync error:', error);
+    showNotification('Error during sync process', 'error');
   }
 }
 
-// Start periodic sync with server
 function startPeriodicSync() {
   // Initial sync
   syncLocalDataWithServer();
@@ -200,7 +242,7 @@ async function addQuote() {
     
     // Sync with server
     try {
-      await postQuotesToServer(quotes);
+      await postQuotesToServer([{ text, category }]);
       showNotification("Quote added and synced with server");
     } catch (error) {
       showNotification("Quote added locally but failed to sync with server", "error");
@@ -243,7 +285,7 @@ async function importFromJsonFile(event) {
         
         // Sync with server
         try {
-          await postQuotesToServer(quotes);
+          await postQuotesToServer(importedQuotes);
           showNotification("Quotes imported and synced with server");
         } catch (error) {
           showNotification("Quotes imported locally but failed to sync with server", "error");

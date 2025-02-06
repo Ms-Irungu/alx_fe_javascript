@@ -40,95 +40,165 @@ function loadQuotes() {
 
 function saveQuotes() {
   localStorage.setItem("quotes", JSON.stringify(quotes));
-} // Simulate fetching quotes from the server
+} // Fetch quotes from JSONPlaceholder
 
 
 function fetchQuotesFromServer() {
+  var response, posts, serverQuotes;
   return regeneratorRuntime.async(function fetchQuotesFromServer$(_context) {
     while (1) {
       switch (_context.prev = _context.next) {
         case 0:
-          return _context.abrupt("return", new Promise(function (resolve) {
-            setTimeout(function () {
-              // Simulate server response using localStorage as a mock server
-              var serverQuotes = JSON.parse(localStorage.getItem("serverQuotes")) || quotes;
-              resolve(serverQuotes);
-            }, 1000); // Simulate network delay
-          }));
+          _context.prev = 0;
+          _context.next = 3;
+          return regeneratorRuntime.awrap(fetch('https://jsonplaceholder.typicode.com/posts'));
 
-        case 1:
+        case 3:
+          response = _context.sent;
+
+          if (response.ok) {
+            _context.next = 6;
+            break;
+          }
+
+          throw new Error('Network response was not ok');
+
+        case 6:
+          _context.next = 8;
+          return regeneratorRuntime.awrap(response.json());
+
+        case 8:
+          posts = _context.sent;
+          // Transform posts into quotes format
+          serverQuotes = posts.slice(0, 5).map(function (post) {
+            return {
+              text: post.body.split('\n')[0],
+              // Take first line of post body as quote
+              category: post.title.split(' ')[0] // Take first word of title as category
+
+            };
+          });
+          return _context.abrupt("return", serverQuotes);
+
+        case 13:
+          _context.prev = 13;
+          _context.t0 = _context["catch"](0);
+          console.error('Error fetching quotes:', _context.t0);
+          showNotification('Error fetching quotes from server', 'error');
+          return _context.abrupt("return", null);
+
+        case 18:
         case "end":
           return _context.stop();
       }
     }
-  });
-} // Simulate posting quotes to the server
+  }, null, null, [[0, 13]]);
+} // Post quotes to JSONPlaceholder
 
 
 function postQuotesToServer(quotes) {
+  var promises, responses, results;
   return regeneratorRuntime.async(function postQuotesToServer$(_context2) {
     while (1) {
       switch (_context2.prev = _context2.next) {
         case 0:
-          return _context2.abrupt("return", new Promise(function (resolve) {
-            setTimeout(function () {
-              // Simulate saving quotes to the server
-              localStorage.setItem("serverQuotes", JSON.stringify(quotes));
-              resolve();
-            }, 1000); // Simulate network delay
-          }));
+          _context2.prev = 0;
+          promises = quotes.map(function (quote) {
+            return fetch('https://jsonplaceholder.typicode.com/posts', {
+              method: 'POST',
+              body: JSON.stringify({
+                title: quote.category,
+                body: quote.text,
+                userId: 1
+              }),
+              headers: {
+                'Content-type': 'application/json; charset=UTF-8'
+              }
+            });
+          });
+          _context2.next = 4;
+          return regeneratorRuntime.awrap(Promise.all(promises));
 
-        case 1:
+        case 4:
+          responses = _context2.sent;
+          _context2.next = 7;
+          return regeneratorRuntime.awrap(Promise.all(responses.map(function (r) {
+            return r.json();
+          })));
+
+        case 7:
+          results = _context2.sent;
+          showNotification('Quotes successfully synced with server', 'info');
+          return _context2.abrupt("return", results);
+
+        case 12:
+          _context2.prev = 12;
+          _context2.t0 = _context2["catch"](0);
+          console.error('Error posting quotes:', _context2.t0);
+          showNotification('Error syncing quotes with server', 'error');
+          return _context2.abrupt("return", null);
+
+        case 17:
         case "end":
           return _context2.stop();
       }
     }
-  });
+  }, null, null, [[0, 12]]);
 } // Sync local data with server data
 
 
 function syncLocalDataWithServer() {
-  var serverQuotes, localQuotes;
+  var serverQuotes, localQuotes, mergedQuotes;
   return regeneratorRuntime.async(function syncLocalDataWithServer$(_context3) {
     while (1) {
       switch (_context3.prev = _context3.next) {
         case 0:
           _context3.prev = 0;
-          _context3.next = 3;
+          showNotification('Syncing with server...', 'info');
+          _context3.next = 4;
           return regeneratorRuntime.awrap(fetchQuotesFromServer());
 
-        case 3:
+        case 4:
           serverQuotes = _context3.sent;
-          localQuotes = JSON.parse(localStorage.getItem("quotes")) || []; // Check if server data is different from local data
 
-          if (JSON.stringify(localQuotes) !== JSON.stringify(serverQuotes)) {
-            // Server data takes precedence in case of discrepancies
-            localStorage.setItem("quotes", JSON.stringify(serverQuotes));
-            quotes = serverQuotes; // Update the in-memory quotes array
-            // Notify the user that data has been updated
+          if (serverQuotes) {
+            localQuotes = JSON.parse(localStorage.getItem("quotes")) || []; // Merge server and local quotes, removing duplicates
 
-            showNotification("Data has been synchronized with the server"); // Refresh the UI
+            mergedQuotes = _toConsumableArray(localQuotes);
+            serverQuotes.forEach(function (serverQuote) {
+              var exists = localQuotes.some(function (localQuote) {
+                return localQuote.text === serverQuote.text && localQuote.category === serverQuote.category;
+              });
+
+              if (!exists) {
+                mergedQuotes.push(serverQuote);
+              }
+            }); // Update local storage and memory with merged quotes
+
+            localStorage.setItem("quotes", JSON.stringify(mergedQuotes));
+            quotes = mergedQuotes; // Update UI
 
             populateCategories();
             showRandomQuote();
+            showNotification('Sync completed successfully', 'info');
           }
 
-          _context3.next = 11;
+          _context3.next = 12;
           break;
 
         case 8:
           _context3.prev = 8;
           _context3.t0 = _context3["catch"](0);
-          showNotification("Error syncing with server", "error");
+          console.error('Sync error:', _context3.t0);
+          showNotification('Error during sync process', 'error');
 
-        case 11:
+        case 12:
         case "end":
           return _context3.stop();
       }
     }
   }, null, null, [[0, 8]]);
-} // Start periodic sync with server
-
+}
 
 function startPeriodicSync() {
   // Initial sync
@@ -253,7 +323,10 @@ function addQuote() {
 
           _context4.prev = 7;
           _context4.next = 10;
-          return regeneratorRuntime.awrap(postQuotesToServer(quotes));
+          return regeneratorRuntime.awrap(postQuotesToServer([{
+            text: text,
+            category: category
+          }]));
 
         case 10:
           showNotification("Quote added and synced with server");
@@ -329,7 +402,7 @@ function importFromJsonFile(event) {
 
                     _context5.prev = 5;
                     _context5.next = 8;
-                    return regeneratorRuntime.awrap(postQuotesToServer(quotes));
+                    return regeneratorRuntime.awrap(postQuotesToServer(importedQuotes));
 
                   case 8:
                     showNotification("Quotes imported and synced with server");
