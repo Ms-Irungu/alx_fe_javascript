@@ -1,26 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dynamic Quote Generator</title>
-</head>
-<body>
-  <h1>Dynamic Quote Generator</h1>
-  <!-- Category filter dropdown -->
-  <select id="categoryFilter" onchange="filterQuotes()">
-    <option value="all">All Categories</option>
-    <!-- Dynamically populated categories -->
-  </select> 
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Quote Generator</title>
+    <!-- <link rel="stylesheet" href="style.css"> -->
+  </head>
+  <body>
+    <h1>Dynamic Quote Generator</h1>
+    <!-- Category filter dropdown -->
+    <select id="categoryFilter" onchange="filterQuotes()">
+      <option value="all">All Categories</option>
+      <!-- Dynamically populated categories -->
+    </select>
 
-  <div id="quoteDisplay"></div>
-  <button id="newQuote">Show New Quote</button>
+    <div id="quoteDisplay"></div>
+    <button id="newQuote">Show New Quote</button>
 
-  <div id = jsonExport_Import>
-    <button id="exportQuotes">Export Quotes</button>
-    <input type="file" id="importFile" accept=".json">
-  </div>
-  
-  <script src="script.js"></script>
-</body>
+    <div id="jsonExport_Import">
+      <button id="exportQuotes">Export Quotes</button>
+      <input type="file" id="importFile" accept=".json">
+    </div>
+    
+    <div id="notification" style="display: none;"></div>
+    
+    <button id="refreshData">Sync with Server</button>
+    
+    <script src="script.js"></script>
+  </body>
 </html>
