@@ -418,7 +418,7 @@ function importFromJsonFile(event) {
                     return regeneratorRuntime.awrap(syncQuotes());
 
                   case 8:
-                    showNotification("Quotes imported and synced with server");
+                    showNotification("Quotes synced with server!");
                     _context5.next = 14;
                     break;
 

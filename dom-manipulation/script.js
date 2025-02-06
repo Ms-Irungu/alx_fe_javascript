@@ -291,7 +291,7 @@ async function importFromJsonFile(event) {
         // Sync with server
         try {
           await syncQuotes();
-          showNotification("Quotes imported and synced with server");
+          showNotification("Quotes synced with server!");
         } catch (error) {
           showNotification("Quotes imported locally but failed to sync with server", "error");
         }
